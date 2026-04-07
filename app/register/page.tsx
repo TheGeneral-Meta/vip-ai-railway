@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { supabase, isSupabaseAvailable } from '@/lib/supabase'
 import Link from 'next/link'
 
 export default function RegisterPage() {
@@ -18,31 +18,45 @@ export default function RegisterPage() {
     setLoading(true)
     setError('')
 
-    const { data: existing } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single()
-
-    if (existing) {
-      setError('Email sudah terdaftar')
+    // Check Supabase availability
+    if (!isSupabaseAvailable()) {
+      setError('Database tidak tersedia. Silakan coba lagi nanti.')
       setLoading(false)
       return
     }
 
-    const { error: insertError } = await supabase
-      .from('users')
-      .insert({
-        email,
-        name,
-        quota: 50,
-        plan: 'free',
-      })
+    try {
+      // Cek email sudah terdaftar
+      const { data: existing, error: checkError } = await supabase!
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .single()
 
-    if (insertError) {
-      setError('Gagal mendaftar: ' + insertError.message)
-    } else {
-      router.push('/login?registered=true')
+      if (existing) {
+        setError('Email sudah terdaftar')
+        setLoading(false)
+        return
+      }
+
+      // Register user
+      const { error: insertError } = await supabase!
+        .from('users')
+        .insert({
+          email,
+          name,
+          quota: 50,
+          plan: 'free',
+        })
+
+      if (insertError) {
+        setError('Gagal mendaftar: ' + insertError.message)
+      } else {
+        router.push('/login?registered=true')
+      }
+    } catch (err: any) {
+      console.error('Registration error:', err)
+      setError('Gagal mendaftar: ' + (err.message || 'Unknown error'))
     }
     setLoading(false)
   }
