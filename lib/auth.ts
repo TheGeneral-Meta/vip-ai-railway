@@ -2,10 +2,10 @@ import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { createClient } from '@supabase/supabase-js'
 
-// ✅ WAJIB: Gunakan SERVICE_ROLE_KEY, BUKAN anon key!
+// Inisialisasi Supabase client untuk backend
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!  // <-- INI YANG BENAR!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!  // WAJIB service_role key!
 )
 
 export const authOptions: NextAuthOptions = {
@@ -33,13 +33,34 @@ export const authOptions: NextAuthOptions = {
         }
 
         // Ambil data user dari tabel 'users'
-        const { data: userData, error: userError } = await supabase
+        let { data: userData, error: userError } = await supabase
           .from('users')
           .select('id, email, name, quota, plan')
           .eq('id', authData.user.id)
-          .single()
+          .maybeSingle()  // Pakai maybeSingle() biar tidak error jika tidak ada
 
-        if (userError) {
+        // Jika user belum ada di tabel users (seharusnya sudah ada via trigger)
+        if (!userData) {
+          const { data: newUser, error: insertError } = await supabase
+            .from('users')
+            .insert({
+              id: authData.user.id,
+              email: authData.user.email!,
+              name: authData.user.user_metadata?.name || authData.user.email,
+              quota: 50,
+              plan: 'free'
+            })
+            .select()
+            .maybeSingle()
+
+          if (insertError) {
+            console.error("Insert error:", insertError)
+            throw new Error("Gagal menyimpan data user")
+          }
+          userData = newUser
+        }
+
+        if (userError && userError.code !== 'PGRST116') {
           console.error("User data error:", userError)
           throw new Error("Gagal mengambil data user")
         }
