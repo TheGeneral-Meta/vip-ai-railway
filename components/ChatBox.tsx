@@ -17,7 +17,7 @@ export default function ChatBox() {
   const sendMessage = async () => {
     if (!input.trim() || loading) return
 
-    const userMessage = { role: 'user', content: input }
+    const userMessage = { role: 'user' as const, content: input }
     const newMessages = [...messages, userMessage]
     setMessages(newMessages)
     setInput('')
@@ -77,4 +77,33 @@ export default function ChatBox() {
             <div className="bg-white shadow-md p-3 rounded-2xl rounded-bl-none">
               <div className="flex gap-1">
                 <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                <span className="w-2 h-2
+                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="p-4 border-t bg-white">
+        <div className="flex gap-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+            placeholder="Tanyakan sesuatu..."
+            className="flex-1 p-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={loading}
+          />
+          <button
+            onClick={sendMessage}
+            disabled={loading}
+            className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {loading ? '...' : 'Kirim'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
