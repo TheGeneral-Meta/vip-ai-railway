@@ -1,73 +1,103 @@
-import { NextAuthOptions } from 'next-auth'
-import CredentialsProvider from 'next-auth/providers/credentials'
-import { supabaseAdmin } from './supabase'
+import { NextAuthOptions } from "next-auth"
+import CredentialsProvider from "next-auth/providers/credentials"
+import { createClient } from '@supabase/supabase-js'
+
+// Inisialisasi Supabase client untuk backend
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // WAJIB pakai service_role key!
+)
 
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
-      name: 'credentials',
+      name: "credentials",
       credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' }
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error('Email dan password required')
+          throw new Error("Email dan password wajib diisi")
         }
 
-        // Check if supabaseAdmin is available
-        if (!supabaseAdmin) {
-          console.error('Supabase admin client not available')
-          throw new Error('Database connection error')
+        // 1. Login ke Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: credentials.email,
+          password: credentials.password,
+        })
+
+        if (authError || !authData.user) {
+          console.error("Auth error:", authError)
+          throw new Error("Email atau password salah")
         }
 
-        const { data: user, error } = await supabaseAdmin
+        // 2. Ambil atau buat data user di tabel 'users'
+        let { data: userData, error: userError } = await supabase
           .from('users')
-          .select('*')
-          .eq('email', credentials.email)
+          .select('id, email, name, quota, plan')
+          .eq('id', authData.user.id)
           .single()
 
-        if (error || !user) {
-          console.error('Auth error:', error)
-          throw new Error('User tidak ditemukan')
+        // 3. Jika user belum ada di tabel users, buat baru
+        if (userError && userError.code === 'PGRST116') {
+          const { data: newUser, error: insertError } = await supabase
+            .from('users')
+            .insert({
+              id: authData.user.id,
+              email: authData.user.email!,
+              name: authData.user.user_metadata?.name || '',
+              quota: 50,
+              plan: 'free'
+            })
+            .select()
+            .single()
+
+          if (insertError) {
+            console.error("Insert error:", insertError)
+            throw new Error("Gagal menyimpan data user")
+          }
+
+          userData = newUser
+        } else if (userError) {
+          console.error("Select error:", userError)
+          throw new Error("Gagal mengambil data user")
         }
 
-        // Simple password check (for demo, use bcrypt in production)
-        if (user.password && user.password !== credentials.password) {
-          throw new Error('Password salah')
-        }
-
+        // 4. Return user object untuk session
         return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
+          id: userData.id,
+          email: userData.email,
+          name: userData.name,
+          quota: userData.quota,
+          plan: userData.plan,
         }
-      },
-    }),
+      }
+    })
   ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
-        token.email = user.email
+        token.quota = user.quota
+        token.plan = user.plan
       }
       return token
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string
+        session.user.quota = token.quota as number
+        session.user.plan = token.plan as string
       }
       return session
-    },
+    }
   },
   pages: {
     signIn: '/login',
-    error: '/login',
   },
   session: {
-    strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === 'development',
 }
