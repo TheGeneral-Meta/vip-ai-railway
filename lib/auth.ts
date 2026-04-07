@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 // Inisialisasi Supabase client untuk backend
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  SUPABASE_SERVICE_ROLE_KEY=sb_secret_f26KP9EzpVjESgGrhHXrdw_3b0fgpWr! // WAJIB pakai service_role key!
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // WAJIB pakai service_role key!
 )
 
 export const authOptions: NextAuthOptions = {
@@ -21,7 +21,7 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Email dan password wajib diisi")
         }
 
-        // 1. Login ke Supabase Auth
+        // Login ke Supabase Auth
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email: credentials.email,
           password: credentials.password,
@@ -32,14 +32,14 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Email atau password salah")
         }
 
-        // 2. Ambil atau buat data user di tabel 'users'
+        // Ambil data user dari tabel 'users'
         let { data: userData, error: userError } = await supabase
           .from('users')
           .select('id, email, name, quota, plan')
           .eq('id', authData.user.id)
           .single()
 
-        // 3. Jika user belum ada di tabel users, buat baru
+        // Jika user belum ada di tabel users, buat baru
         if (userError && userError.code === 'PGRST116') {
           const { data: newUser, error: insertError } = await supabase
             .from('users')
@@ -57,14 +57,12 @@ export const authOptions: NextAuthOptions = {
             console.error("Insert error:", insertError)
             throw new Error("Gagal menyimpan data user")
           }
-
           userData = newUser
         } else if (userError) {
           console.error("Select error:", userError)
           throw new Error("Gagal mengambil data user")
         }
 
-        // 4. Return user object untuk session
         return {
           id: userData.id,
           email: userData.email,
