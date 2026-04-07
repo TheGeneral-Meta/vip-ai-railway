@@ -25,7 +25,8 @@ export const authOptions: NextAuthOptions = {
           throw new Error('User tidak ditemukan')
         }
 
-        // Simple password check (no hash for simplicity, upgrade later)
+        // Untuk sementara, skip password check dulu
+        // Atau bisa pakai perbandingan sederhana
         if (user.password && user.password !== credentials.password) {
           throw new Error('Password salah')
         }
