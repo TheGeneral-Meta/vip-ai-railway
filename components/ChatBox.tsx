@@ -34,15 +34,15 @@ export default function ChatBox() {
 
       if (data.error) {
         if (data.needsUpgrade) {
-          setMessages(prev => [...prev, { role: 'assistant', content: '⚠️ Quota habis! Silakan upgrade ke premium di halaman Pricing.' }])
+          setMessages(prev => [...prev, { role: 'assistant', content: 'Quota habis! Silakan upgrade ke premium di halaman Pricing.' }])
         } else {
-          setMessages(prev => [...prev, { role: 'assistant', content: '❌ Error: ' + data.error }])
+          setMessages(prev => [...prev, { role: 'assistant', content: 'Error: ' + data.error }])
         }
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: data.text }])
       }
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: '❌ Terjadi kesalahan. Silakan coba lagi.' }])
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Terjadi kesalahan. Silakan coba lagi.' }])
     } finally {
       setLoading(false)
     }
@@ -52,7 +52,7 @@ export default function ChatBox() {
     <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4">
         <h2 className="text-white font-bold text-xl">VIP AI Chat</h2>
-        <p className="text-white/80 text-sm">Powered by DeepSeek</p>
+        <p className="text-white text-sm">Powered by DeepSeek</p>
       </div>
 
       <div className="h-[500px] overflow-y-auto p-4 space-y-4 bg-gray-50">
@@ -65,7 +65,7 @@ export default function ChatBox() {
               className={`max-w-[70%] p-3 rounded-2xl ${
                 msg.role === 'user'
                   ? 'bg-blue-600 text-white rounded-br-none'
-                  : 'bg-white shadow-md text-gray-800 rounded-bl-none'
+                  : 'bg-white shadow text-gray-800 rounded-bl-none'
               }`}
             >
               <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -74,12 +74,8 @@ export default function ChatBox() {
         ))}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-white shadow-md p-3 rounded-2xl rounded-bl-none">
-              <div className="flex gap-1">
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-              </div>
+            <div className="bg-white shadow p-3 rounded-2xl rounded-bl-none">
+              <p className="text-gray-500">Mengetik...</p>
             </div>
           </div>
         )}
@@ -98,7 +94,7 @@ export default function ChatBox() {
           <button
             onClick={sendMessage}
             disabled={loading}
-            className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition disabled:opacity-50"
+            className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 disabled:opacity-50"
           >
             {loading ? '...' : 'Kirim'}
           </button>
