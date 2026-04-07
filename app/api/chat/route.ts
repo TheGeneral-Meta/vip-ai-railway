@@ -4,8 +4,16 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
 export const maxDuration = 60
+export const dynamic = 'force-dynamic'
+
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
 
 export async function POST(req: Request) {
+  // Skip during build time
+  if (isBuildTime) {
+    return Response.json({ text: 'Building...' })
+  }
+
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
