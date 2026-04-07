@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 // Inisialisasi Supabase client untuk backend
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // WAJIB pakai service_role key!
+  SUPABASE_SERVICE_ROLE_KEY=sb_secret_f26KP9EzpVjESgGrhHXrdw_3b0fgpWr! // WAJIB pakai service_role key!
 )
 
 export const authOptions: NextAuthOptions = {
