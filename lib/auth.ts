@@ -21,7 +21,7 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Email dan password wajib diisi")
         }
 
-        // Login ke Supabase Auth
+        // STEP 1: Login ke Supabase Auth
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email: credentials.email,
           password: credentials.password,
@@ -32,15 +32,17 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Email atau password salah")
         }
 
-        // Ambil data user dari tabel 'users'
-        let { data: userData, error: userError } = await supabase
+        // STEP 2: Ambil data user dari tabel 'users' berdasarkan ID dari Auth
+        const { data: userData, error: userError } = await supabase
           .from('users')
-          .select('id, email, name, quota, plan')
+          .select('id, email, name, quota, plan, created_at')
           .eq('id', authData.user.id)
-          .maybeSingle()  // Pakai maybeSingle() biar tidak error jika tidak ada
+          .single()
 
-        // Jika user belum ada di tabel users (seharusnya sudah ada via trigger)
-        if (!userData) {
+        if (userError) {
+          console.error("Error mengambil data user:", userError)
+          
+          // Jika user belum ada di tabel users (fallback)
           const { data: newUser, error: insertError } = await supabase
             .from('users')
             .insert({
@@ -50,45 +52,59 @@ export const authOptions: NextAuthOptions = {
               quota: 50,
               plan: 'free'
             })
-            .select()
-            .maybeSingle()
+            .select('id, email, name, quota, plan, created_at')
+            .single()
 
           if (insertError) {
-            console.error("Insert error:", insertError)
-            throw new Error("Gagal menyimpan data user")
+            console.error("Error membuat user:", insertError)
+            throw new Error("Gagal mengambil data user")
           }
-          userData = newUser
+
+          // Return data user yang baru dibuat
+          return {
+            id: newUser.id,
+            email: newUser.email,
+            name: newUser.name,
+            quota: newUser.quota,
+            plan: newUser.plan,
+            created_at: newUser.created_at,
+          }
         }
 
-        if (userError && userError.code !== 'PGRST116') {
-          console.error("User data error:", userError)
-          throw new Error("Gagal mengambil data user")
-        }
-
+        // STEP 3: Return data user lengkap untuk session
         return {
           id: userData.id,
           email: userData.email,
           name: userData.name,
           quota: userData.quota,
           plan: userData.plan,
+          created_at: userData.created_at,
         }
       }
     })
   ],
   callbacks: {
     async jwt({ token, user }) {
+      // Saat pertama kali login, simpan data user ke token
       if (user) {
         token.id = user.id
+        token.email = user.email
+        token.name = user.name
         token.quota = user.quota
         token.plan = user.plan
+        token.created_at = user.created_at
       }
       return token
     },
     async session({ session, token }) {
+      // Kirim data user dari token ke session
       if (session.user) {
         session.user.id = token.id as string
+        session.user.email = token.email as string
+        session.user.name = token.name as string
         session.user.quota = token.quota as number
         session.user.plan = token.plan as string
+        session.user.created_at = token.created_at as string
       }
       return session
     }
