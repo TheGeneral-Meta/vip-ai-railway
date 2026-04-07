@@ -17,18 +17,23 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const result = await signIn('credentials', {
-      email,
-      password,
-      redirect: false,
-    })
+    try {
+      const result = await signIn('credentials', {
+        email,
+        password,
+        redirect: false,
+      })
 
-    if (result?.error) {
-      setError('Email atau password salah')
-      setLoading(false)
-    } else {
-      router.push('/dashboard')
+      if (result?.error) {
+        setError('Email atau password salah')
+      } else {
+        router.push('/dashboard')
+        router.refresh()
+      }
+    } catch (err) {
+      setError('Terjadi kesalahan. Silakan coba lagi.')
     }
+    setLoading(false)
   }
 
   return (
