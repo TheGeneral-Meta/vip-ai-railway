@@ -2,8 +2,6 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { supabaseAdmin } from './supabase'
 
-const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build'
-
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -13,13 +11,14 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
-        // Skip during build time
-        if (isBuildTime) {
-          return null
-        }
-        
         if (!credentials?.email || !credentials?.password) {
           throw new Error('Email dan password required')
+        }
+
+        // Check if supabaseAdmin is available
+        if (!supabaseAdmin) {
+          console.error('Supabase admin client not available')
+          throw new Error('Database connection error')
         }
 
         const { data: user, error } = await supabaseAdmin
@@ -29,7 +28,13 @@ export const authOptions: NextAuthOptions = {
           .single()
 
         if (error || !user) {
+          console.error('Auth error:', error)
           throw new Error('User tidak ditemukan')
+        }
+
+        // Simple password check (for demo, use bcrypt in production)
+        if (user.password && user.password !== credentials.password) {
+          throw new Error('Password salah')
         }
 
         return {
@@ -57,9 +62,12 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/login',
+    error: '/login',
   },
   session: {
     strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
 }
