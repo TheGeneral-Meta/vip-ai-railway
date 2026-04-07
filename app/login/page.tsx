@@ -27,6 +27,7 @@ export default function LoginPage() {
       if (result?.error) {
         setError('Email atau password salah')
       } else {
+        // Redirect ke dashboard setelah login sukses
         router.push('/dashboard')
         router.refresh()
       }
