@@ -2,14 +2,19 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase, isSupabaseAvailable } from '@/lib/supabase'
-import Link from 'next/link'
+import { createClient } from '@supabase/supabase-js'
+
+// Inisialisasi Supabase client untuk frontend
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 export default function RegisterPage() {
   const router = useRouter()
-  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -18,53 +23,40 @@ export default function RegisterPage() {
     setLoading(true)
     setError('')
 
-    // Check Supabase availability
-    if (!isSupabaseAvailable()) {
-      setError('Database tidak tersedia. Silakan coba lagi nanti.')
-      setLoading(false)
-      return
-    }
-
     try {
-      // Cek email sudah terdaftar
-      const { data: existing, error: checkError } = await supabase!
-        .from('users')
-        .select('id')
-        .eq('email', email)
-        .single()
+      // Registrasi ke Supabase Auth
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: name,
+            quota: 50,
+            plan: 'free'
+          }
+        }
+      })
 
-      if (existing) {
-        setError('Email sudah terdaftar')
-        setLoading(false)
-        return
+      if (signUpError) {
+        throw new Error(signUpError.message)
       }
 
-      // Register user
-      const { error: insertError } = await supabase!
-        .from('users')
-        .insert({
-          email,
-          name,
-          quota: 50,
-          plan: 'free',
-        })
-
-      if (insertError) {
-        setError('Gagal mendaftar: ' + insertError.message)
-      } else {
-        router.push('/login?registered=true')
+      if (data.user) {
+        // Redirect ke halaman login
+        alert('Pendaftaran berhasil! Silakan login.')
+        router.push('/login')
       }
     } catch (err: any) {
-      console.error('Registration error:', err)
-      setError('Gagal mendaftar: ' + (err.message || 'Unknown error'))
+      setError(err.message || 'Terjadi kesalahan')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center mb-6">Daftar Akun</h1>
+        <h1 className="text-3xl font-bold text-center mb-6">Daftar</h1>
         
         {error && (
           <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4">
@@ -108,9 +100,9 @@ export default function RegisterPage() {
         
         <p className="text-center mt-4 text-gray-600">
           Sudah punya akun?{' '}
-          <Link href="/login" className="text-blue-600 hover:underline">
+          <a href="/login" className="text-blue-600 hover:underline">
             Login
-          </Link>
+          </a>
         </p>
       </div>
     </div>
